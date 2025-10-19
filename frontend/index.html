@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ModelScope图片生成工具（含CFG设置）</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
+        body { background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        h1 { color: #333; margin-bottom: 25px; border-left: 4px solid #2f54eb; padding-left: 15px; }
+        .param-group { margin-bottom: 20px; }
+        .param-label { display: block; margin-bottom: 8px; color: #666; font-weight: 500; }
+        textarea.param-input { width: 100%; min-height: 120px; padding: 15px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; }
+        .num-input { width: 150px; padding: 10px 15px; border: 1px solid #e5e6eb; border-radius: 4px; }
+        .param-input:focus, .num-input:focus { outline: none; border-color: #2f54eb; }
+        .btn { padding: 12px 24px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: .2s; }
+        .btn-primary { background: #2f54eb; color: #fff; }
+        .btn-primary:hover { background: #1d39c4; }
+        .btn-primary:disabled { background: #b3c5ff; cursor: not-allowed; }
+        .btn-download { background: #52c41a; color: #fff; margin-top: 15px; margin-right: 10px; }
+        .status-box { margin: 25px 0; padding: 15px; border-radius: 4px; background: #f0f2f5; min-height: 44px; }
+        .status-success { color: #52c41a; font-weight: 500; }
+        .status-fail { color: #f5222d; font-weight: 500; }
+        .result-box { margin-top: 30px; display: none; }
+        .result-title { margin-bottom: 15px; color: #333; }
+        .result-img { max-width: 500px; border-radius: 8px; border: 1px solid #e5e6eb; }
+        .tip { color: #888; font-size: 13px; margin-top: 5px; line-height: 1.6; }
+        .path-info { margin: 10px 0; color: #666; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ModelScope图片生成工具（含CFG参数设置）</h1>
+
+        <!-- Prompt输入 -->
+        <div class="param-group">
+            <label class="param-label">生成提示词（Prompt，必填！）</label>
+            <textarea class="param-input" id="prompt" placeholder="例如：古风汉服女孩，庭院樱花，8k细节">一只金色的猫，软光，8k毛发细节，亚洲审美风格</textarea>
+            <div class="tip">提示：可写中文/英文，细节越全效果越好</div>
+        </div>
+
+        <!-- 负面Prompt -->
+        <div class="param-group">
+            <label class="param-label">负面提示词（可选）</label>
+            <textarea class="param-input" id="negativePrompt" placeholder="例如：模糊、低分辨率">blurry, low res, deformed, 水印, 风格偏离</textarea>
+        </div>
+
+        <!-- 新增：CFG参数调节区域 -->
+        <div class="param-group">
+            <label class="param-label">CFG Scale（提示词约束力，必填！1-20之间）</label>
+            <input type="number" class="num-input" id="cfgScale" value="8" min="1" max="20" step="1">
+            <div class="tip">数值说明：1-5（创意强、偏主题）；6-12（默认8，兼顾主题与创意，推荐）；13+（严格贴Prompt，可能僵硬）</div>
+        </div>
+
+        <!-- 操作区 -->
+        <button class="btn btn-primary" id="startBtn">点击生成图片</button>
+        <div class="status-box" id="statusBox">等待填写Prompt和CFG，点击生成...</div>
+        <div class="path-info" id="savePathInfo" style="display: none;">
+            图片保存路径：<span id="pathText"></span> | CFG参数：<span id="cfgText"></span>
+        </div>
+
+        <!-- 结果区 -->
+        <div class="result-box" id="resultBox">
+            <h3 class="result-title">生成结果（Prompt：<span id="showPrompt"></span> | CFG：<span id="showCfg"></span>）</h3>
+            <div id="imgContainer"></div>
+            <button class="btn btn-download" id="downloadBtn">下载图片</button>
+        </div>
+    </div>
+
+    <script>
+        const backendUrl = location.origin + "/generate-image";  // 自动适配本地/云服务器
+        let currentTaskId = null;
+        let checkInterval = null;
+
+        // 生成按钮点击（新增：传递CFG参数给后端）
+        document.getElementById("startBtn").addEventListener("click", async () => {
+            const startBtn = document.getElementById("startBtn");
+            const prompt = document.getElementById("prompt").value.trim();
+            const cfgScale = parseInt(document.getElementById("cfgScale").value);
+
+            // 校验：Prompt和CFG都要符合要求
+            if (!prompt) { alert("请填写Prompt！"); return; }
+            if (isNaN(cfgScale) || cfgScale < 1 || cfgScale > 20) { alert("CFG需填写1-20之间的整数！"); return; }
+
+            startBtn.disabled = true;
+            const statusBox = document.getElementById("statusBox");
+            statusBox.textContent = `提交中（Prompt：${prompt.slice(0, 30)}... | CFG：${cfgScale}）`;
+            statusBox.className = "status-box";
+
+            try {
+                const res = await fetch(backendUrl, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        negative_prompt: document.getElementById("negativePrompt").value.trim(),
+                        cfgScale: cfgScale  // 新增：将前端CFG参数传给后端
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                // 显示保存路径和CFG
+                currentTaskId = data.task_id;
+                document.getElementById("savePathInfo").style.display = "block";
+                document.getElementById("pathText").textContent = data.save_path;
+                document.getElementById("cfgText").textContent = data.cfg_scale;
+                statusBox.textContent = `任务启动（TaskID：${currentTaskId} | CFG：${data.cfg_scale}），每5秒查询进度...`;
+                
+                // 定时查进度（携带CFG参数，供后端文件名使用）
+                checkInterval = setInterval(() => checkStatus(cfgScale), 5000);
+            } catch (e) {
+                statusBox.textContent = `失败：${e.message}`;
+                statusBox.className = "status-box status-fail";
+                startBtn.disabled = false;
+            }
+        });
+
+        // 查进度+显示结果（新增：接收并显示CFG）
+        async function checkStatus(cfgScale) {
+            const statusBox = document.getElementById("statusBox");
+            try {
+                // 查询时携带CFG，供后端保存图片命名
+                const res = await fetch(`${backendUrl}?task_id=${currentTaskId}&cfg_scale=${cfgScale}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                if (data.task_status === "SUCCEED") {
+                    clearInterval(checkInterval);
+                    statusBox.textContent = "生成成功！";
+                    statusBox.className = "status-box status-success";
+                    document.getElementById("startBtn").disabled = false;
+
+                    // 显示图片、Prompt和CFG，支持下载
+                    const resultBox = document.getElementById("resultBox");
+                    document.getElementById("imgContainer").innerHTML = `<img src="${data.img_url}" class="result-img" alt="生成结果（CFG：${data.cfg_scale}）">`;
+                    document.getElementById("showPrompt").textContent = data.user_prompt;
+                    document.getElementById("showCfg").textContent = data.cfg_scale;
+                    document.getElementById("downloadBtn").onclick = () => {
+                        const a = document.createElement("a");
+                        a.href = data.img_url;
+                        a.download = data.img_url.split("/").pop();  // 下载文件名含CFG标识
+                        a.click();
+                    };
+                    resultBox.style.display = "block";
+                } else if (data.task_status === "FAILED") {
+                    clearInterval(checkInterval);
+                    statusBox.textContent = `失败：${data.error_msg}`;
+                    statusBox.className = "status-box status-fail";
+                    document.getElementById("startBtn").disabled = false;
+                } else {
+                    statusBox.textContent = `生成中（状态：${data.task_status} | CFG：${cfgScale}）...`;
+                }
+            } catch (e) {
+                clearInterval(checkInterval);
+                statusBox.textContent = `查询失败：${e.message}`;
+                statusBox.className = "status-box status-fail";
+                document.getElementById("startBtn").disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
