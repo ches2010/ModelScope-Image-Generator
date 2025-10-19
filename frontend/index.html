@@ -3,37 +3,411 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ModelScope图片生成工具（含CFG设置）</title>
+    <title>ModelScope图片生成工具（全参数+Prompt记录）</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: sans-serif; }
         body { background: #f5f7fa; padding: 20px; }
-        .container { max-width: 1000px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
         h1 { color: #333; margin-bottom: 25px; border-left: 4px solid #2f54eb; padding-left: 15px; }
-        .param-group { margin-bottom: 20px; }
-        .param-label { display: block; margin-bottom: 8px; color: #666; font-weight: 500; }
-        textarea.param-input { width: 100%; min-height: 120px; padding: 15px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; }
-        .num-input { width: 150px; padding: 10px 15px; border: 1px solid #e5e6eb; border-radius: 4px; }
-        .param-input:focus, .num-input:focus { outline: none; border-color: #2f54eb; }
-        .btn { padding: 12px 24px; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; transition: .2s; }
+        .section-title { font-size: 16px; color: #2f54eb; margin: 20px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #e8f0fe; }
+        .param-group { margin-bottom: 15px; }
+        .param-label { display: block; margin-bottom: 6px; color: #666; font-weight: 500; font-size: 14px; }
+        .param-desc { color: #999; font-size: 12px; margin-top: 3px; }
+        textarea.param-input { width: 100%; min-height: 120px; padding: 12px; border: 1px solid #e5e6eb; border-radius: 4px; resize: vertical; font-size: 14px; }
+        .num-input, .select-input { width: 100%; padding: 8px 12px; border: 1px solid #e5e6eb; border-radius: 4px; font-size: 14px; }
+        .flex-row { display: flex; gap: 15px; margin-bottom: 15px; }
+        .flex-item { flex: 1; }
+        .param-input:focus, .num-input:focus, .select-input:focus { outline: none; border-color: #2f54eb; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; font-size: 14px; cursor: pointer; transition: .2s; }
         .btn-primary { background: #2f54eb; color: #fff; }
         .btn-primary:hover { background: #1d39c4; }
         .btn-primary:disabled { background: #b3c5ff; cursor: not-allowed; }
-        .btn-download { background: #52c41a; color: #fff; margin-top: 15px; margin-right: 10px; }
-        .status-box { margin: 25px 0; padding: 15px; border-radius: 4px; background: #f0f2f5; min-height: 44px; }
+        .btn-download { background: #52c41a; color: #fff; margin: 10px 8px 0 0; }
+        .btn-download:hover { background: #43a017; }
+        .btn-prompt { background: #f0f2f5; color: #666; padding: 6px 12px; font-size: 12px; margin: 0 8px 8px 0; }
+        .btn-prompt:hover { background: #e5e6eb; }
+        .status-box { margin: 15px 0; padding: 12px; border-radius: 4px; background: #f0f2f5; min-height: 40px; font-size: 14px; }
         .status-success { color: #52c41a; font-weight: 500; }
         .status-fail { color: #f5222d; font-weight: 500; }
-        .result-box { margin-top: 30px; display: none; }
-        .result-title { margin-bottom: 15px; color: #333; }
-        .result-img { max-width: 500px; border-radius: 8px; border: 1px solid #e5e6eb; }
-        .tip { color: #888; font-size: 13px; margin-top: 5px; line-height: 1.6; }
-        .path-info { margin: 10px 0; color: #666; font-size: 14px; }
+        .result-box { margin-top: 20px; display: none; }
+        .result-title { margin-bottom: 12px; color: #333; font-size: 16px; }
+        .result-img-container { display: flex; gap: 15px; flex-wrap: wrap; margin: 10px 0; }
+        .result-img { max-width: 400px; border-radius: 8px; border: 1px solid #e5e6eb; }
+        .config-tag { display: inline-block; padding: 2px 6px; background: #e8f0fe; color: #2f54eb; border-radius: 3px; font-size: 12px; margin: 0 4px 4px 0; }
+        .seed-control { display: flex; align-items: center; gap: 10px; }
+        .seed-slider { flex: 1; }
+        .seed-input { width: 120px; }
+        .prompt-history { margin-top: 10px; max-height: 180px; overflow-y: auto; padding: 8px; border: 1px solid #e8f0fe; border-radius: 4px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>ModelScope图片生成工具（含CFG参数设置）</h1>
+        <h1>ModelScope图片生成工具（全参数配置+Prompt记录）</h1>
 
-        <!-- Prompt输入 -->
+        <!-- 1. Prompt区域（新增历史记录） -->
+        <div>
+            <h3 class="section-title">1. 生成提示词配置</h3>
+            <div class="param-group">
+                <label class="param-label">生成提示词（Prompt，必填！）</label>
+                <textarea class="param-input" id="prompt" placeholder="例如：古风汉服女孩，庭院樱花，8k细节">一只金色的猫，软光，8k毛发细节，亚洲审美风格</textarea>
+                <div class="param-desc">提示：中英文均可，细节越全效果越好（如“光线、风格、纹理”）</div>
+            </div>
+            <div class="param-group">
+                <label class="param-label">负面提示词（Negative Prompt，可选）</label>
+                <textarea class="param-input" id="negativePrompt" placeholder="例如：模糊、低分辨率">blurry, low res, deformed, 水印, 风格偏离, 过度锐化</textarea>
+            </div>
+            <!-- 新增：Prompt历史记录 -->
+            <div class="param-group">
+                <label class="param-label">Prompt历史记录（点击快速复用，最多保存10条）</label>
+                <div class="prompt-history" id="promptHistory">
+                    <span style="color:#999; font-size:12px;">暂无历史记录，生成一次后自动保存</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. 核心参数配置（新增步数/宽高/生成数量/Seed） -->
+        <div>
+            <h3 class="section-title">2. 核心生成参数</h3>
+            <div class="flex-row">
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">CFG Scale（提示词约束力）</label>
+                        <input type="number" class="num-input" id="cfgScale" value="8" min="1" max="20" step="1">
+                        <div class="param-desc">1-5（创意强）；6-12（推荐）；13+（严格贴Prompt）</div>
+                    </div>
+                </div>
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">生成步数（Steps）</label>
+                        <input type="number" class="num-input" id="steps" placeholder="默认按采样器自动匹配" min="10" max="50" step="1">
+                        <div class="param-desc">10-50步，步高画质优但慢（默认：DPM2MK=30，Euler=22）</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-row">
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">图片宽度（像素）</label>
+                        <input type="number" class="num-input" id="width" value="768" min="256" max="1024" step="64">
+                        <div class="param-desc">256-1024，建议与高度1:1（如512x512、768x768）</div>
+                    </div>
+                </div>
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">图片高度（像素）</label>
+                        <input type="number" class="num-input" id="height" value="768" min="256" max="1024" step="64">
+                        <div class="param-desc">与宽度保持比例，避免拉伸变形</div>
+                    </div>
+                </div>
+            </div>
+            <div class="flex-row">
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">生成图片数量</label>
+                        <input type="number" class="num-input" id="numImages" value="1" min="1" max="3" step="1">
+                        <div class="param-desc">1-3张，数量越多生成越慢</div>
+                    </div>
+                </div>
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">Seed（随机种子，-1=随机）</label>
+                        <!-- 新增：Seed滑动条+输入框组合 -->
+                        <div class="seed-control">
+                            <input type="range" class="seed-slider" id="seedSlider" min="-1" max="10000" value="-1">
+                            <input type="number" class="num-input seed-input" id="seedInput" value="-1" min="-1">
+                        </div>
+                        <div class="param-desc">固定Seed（如12345）可复现相同图片，-1为每次随机</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 采样器+调度器（逻辑不变，排版优化） -->
+        <div>
+            <h3 class="section-title">3. 采样器与调度器</h3>
+            <div class="flex-row">
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">采样器（核心降噪逻辑）</label>
+                        <select class="select-input" id="sampler">
+                            <option value="DPM++ 2M Karras" selected>推荐：DPM++ 2M Karras（速度+写实）</option>
+                            <option value="Euler">新增：Euler（基础稳定，适配性强）</option>
+                            <option value="ResMultistep">新增：ResMultistep（多步降噪，细节稳）</option>
+                            <option value="Euler a">快速预览：Euler a（速度最快，试错首选）</option>
+                            <option value="DDIM">细节优先：DDIM（收敛快，纹理清晰）</option>
+                            <option value="PLMS">风格适配：PLMS（降噪稳，适合LoRA）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex-item">
+                    <div class="param-group">
+                        <label class="param-label">调度器（控制降噪节奏）</label>
+                        <select class="select-input" id="schedule">
+                            <option value="sgm_uniform" selected>推荐：SGMUniform（降噪稳，画质优）</option>
+                            <option value="simple">新增：Simple（逻辑简洁，速度快）</option>
+                        </select>
+                        <div class="param-desc">SGMUniform适配所有采样器，Simple适配Euler系列</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. 操作与结果区域（适配多图+新增参数显示） -->
+        <button class="btn btn-primary" id="startBtn" style="margin-top: 15px;">点击生成图片</button>
+        <div class="status-box" id="statusBox">等待填写参数，点击生成...</div>
+        <div class="path-info" id="savePathInfo" style="display: none; font-size: 14px; color: #666;">
+            图片保存路径：<span id="pathText"></span> | 
+            <span class="config-tag">Seed：<span id="seedText"></span></span>
+            <span class="config-tag">生成数量：<span id="numImgText"></span></span>
+            <span class="config-tag">尺寸：<span id="sizeText"></span></span>
+            <span class="config-tag">CFG：<span id="cfgText"></span></span>
+            <span class="config-tag">采样器：<span id="samplerText"></span></span>
+            <span class="config-tag">调度器：<span id="scheduleText"></span></span>
+            <span class="config-tag">步数：<span id="stepsText"></span></span>
+        </div>
+
+        <div class="result-box" id="resultBox">
+            <h3 class="result-title">生成结果（
+                Prompt：<span id="showPrompt" style="font-weight: normal; font-size: 14px;">--</span> | 
+                <span class="config-tag">Seed：<span id="showSeed"></span></span>
+                <span class="config-tag">CFG：<span id="showCfg"></span></span>
+                <span class="config-tag">采样器：<span id="showSampler"></span></span>
+            ）</h3>
+            <div class="result-img-container" id="imgContainer"></div>
+            <div id="downloadBtnContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const backendUrl = location.origin + "/generate-image";
+        let currentTaskId = null;
+        let checkInterval = null;
+        const MAX_PROMPT_HISTORY = 10;  // Prompt历史最多保存10条
+
+        // 页面加载：加载Prompt历史、绑定Seed滑动+输入联动
+        window.onload = () => {
+            loadPromptHistory();
+            bindSeedControl();
+        };
+
+        // 新增：Seed滑动条与输入框联动（值同步）
+        function bindSeedControl() {
+            const slider = document.getElementById("seedSlider");
+            const input = document.getElementById("seedInput");
+            // 滑动条变，输入框变
+            slider.addEventListener("input", () => {
+                input.value = slider.value;
+            });
+            // 输入框变，滑动条变（限制范围）
+            input.addEventListener("change", () => {
+                let val = parseInt(input.value) || -1;
+                val = Math.max(-1, Math.min(10000, val));
+                input.value = val;
+                slider.value = val;
+            });
+        }
+
+        // 新增：保存Prompt到本地（最多10条，去重）
+        function savePromptToHistory(prompt) {
+            if (!prompt.trim()) return;
+            let history = JSON.parse(localStorage.getItem("promptHistory") || "[]");
+            // 去重：避免重复保存相同Prompt
+            history = history.filter(item => item !== prompt.trim());
+            // 新增Prompt放最前面
+            history.unshift(prompt.trim());
+            // 超过10条则删除最后一条
+            if (history.length > MAX_PROMPT_HISTORY) {
+                history = history.slice(0, MAX_PROMPT_HISTORY);
+            }
+            localStorage.setItem("promptHistory", JSON.stringify(history));
+            loadPromptHistory();
+        }
+
+        // 新增：加载Prompt历史并显示（点击可复用）
+        function loadPromptHistory() {
+            const container = document.getElementById("promptHistory");
+            let history = JSON.parse(localStorage.getItem("promptHistory") || "[]");
+            if (history.length === 0) {
+                container.innerHTML = "<span style='color:#999; font-size:12px;'>暂无历史记录，生成一次后自动保存</span>";
+                return;
+            }
+            // 生成历史按钮，点击填充到Prompt输入框
+            container.innerHTML = history.map((prompt, idx) => `
+                <button class="btn btn-prompt" data-prompt="${prompt}">
+                    ${idx+1}. ${prompt.length > 30 ? prompt.slice(0,30)+"..." : prompt}
+                </button>
+            `).join("");
+            // 绑定点击事件：复用历史Prompt
+            document.querySelectorAll(".btn-prompt").forEach(btn => {
+                btn.addEventListener("click", () => {
+                    document.getElementById("prompt").value = btn.getAttribute("data-prompt");
+                });
+            });
+        }
+
+        // 生成按钮点击（整合所有新增参数传递）
+        document.getElementById("startBtn").addEventListener("click", async () => {
+            const startBtn = document.getElementById("startBtn");
+            // 收集所有参数（含新增的步数/宽高/生成数量/Seed）
+            const prompt = document.getElementById("prompt").value.trim();
+            const negativePrompt = document.getElementById("negativePrompt").value.trim();
+            const cfgScale = parseInt(document.getElementById("cfgScale").value) || 8;
+            const steps = document.getElementById("steps").value ? parseInt(document.getElementById("steps").value) : null;
+            const width = parseInt(document.getElementById("width").value) || 768;
+            const height = parseInt(document.getElementById("height").value) || 768;
+            const numImages = parseInt(document.getElementById("numImages").value) || 1;
+            const seed = parseInt(document.getElementById("seedInput").value) || -1;
+            const selectedSampler = document.getElementById("sampler").value;
+            const selectedSchedule = document.getElementById("schedule").value;
+
+            // 基础校验
+            if (!prompt) { alert("请填写Prompt！"); return; }
+            if (cfgScale < 1 || cfgScale > 20) { alert("CFG需填1-20之间的整数！"); return; }
+            if (steps && (steps < 10 || steps > 50)) { alert("步数需填10-50之间的整数！"); return; }
+            if (width < 256 || width > 1024) { alert("宽度需填256-1024之间的整数！"); return; }
+            if (height < 256 || height > 1024) { alert("高度需填256-1024之间的整数！"); return; }
+            if (numImages < 1 || numImages > 3) { alert("生成数量需填1-3之间的整数！"); return; }
+            if (seed < -1) { alert("Seed不能小于-1！"); return; }
+
+            // 禁用按钮，提交请求
+            startBtn.disabled = true;
+            const statusBox = document.getElementById("statusBox");
+            const seedDesc = seed === -1 ? "随机" : seed;
+            statusBox.textContent = `提交中（Prompt：${prompt.slice(0,30)}... | Seed：${seedDesc} | 生成数量：${numImages} | 采样器：${selectedSampler}）`;
+            statusBox.className = "status-box";
+
+            try {
+                const res = await fetch(backendUrl, {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        negativePrompt: negativePrompt,
+                        cfgScale: cfgScale,
+                        steps: steps,  // 前端未填则传null，后端用自动匹配值
+                        width: width,
+                        height: height,
+                        numImages: numImages,
+                        seed: seed,
+                        sampler: selectedSampler,
+                        schedule: selectedSchedule
+                    })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                // 保存当前Prompt到历史记录
+                savePromptToHistory(prompt);
+
+                // 显示所有配置信息
+                currentTaskId = data.task_id;
+                document.getElementById("savePathInfo").style.display = "block";
+                document.getElementById("pathText").textContent = data.save_path;
+                document.getElementById("seedText").textContent = data.seed === -1 ? "随机" : data.seed;
+                document.getElementById("numImgText").textContent = data.num_images;
+                document.getElementById("sizeText").textContent = `${data.width}x${data.height}`;
+                document.getElementById("cfgText").textContent = data.cfg_scale;
+                document.getElementById("samplerText").textContent = data.sampler;
+                document.getElementById("scheduleText").textContent = data.schedule;
+                document.getElementById("stepsText").textContent = data.steps;
+                statusBox.textContent = `任务启动（TaskID：${currentTaskId} | 步数：${data.steps} | 生成数量：${data.num_images}），每5秒查询进度...`;
+                
+                // 定时查进度（携带所有新增参数）
+                checkInterval = setInterval(() => checkStatus(
+                    cfgScale, selectedSampler, selectedSchedule, seed, steps
+                ), 5000);
+            } catch (e) {
+                statusBox.textContent = `失败：${e.message}`;
+                statusBox.className = "status-box status-fail";
+                startBtn.disabled = false;
+            }
+        });
+
+        // 查进度+显示结果（适配多图生成，显示所有新增参数）
+        async function checkStatus(cfgScale, selectedSampler, selectedSchedule, seed, steps) {
+            const statusBox = document.getElementById("statusBox");
+            try {
+                // 查询时携带所有参数，供后端文件名使用
+                const res = await fetch(`${backendUrl}?task_id=${currentTaskId}&cfg_scale=${cfgScale}&sampler=${selectedSampler}&schedule=${selectedSchedule}&seed=${seed}&steps=${steps || 30}`);
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                if (data.task_status === "SUCCEED") {
+                    clearInterval(checkInterval);
+                    statusBox.textContent = `生成成功！共${data.output_images.length}张图片`;
+                    statusBox.className = "status-box status-success";
+                    document.getElementById("startBtn").disabled = false;
+
+                    // 显示结果（适配多图）
+                    const resultBox = document.getElementById("resultBox");
+                    const imgContainer = document.getElementById("imgContainer");
+                    const downloadContainer = document.getElementById("downloadBtnContainer");
+                    // 清空之前的结果
+                    imgContainer.innerHTML = "";
+                    downloadContainer.innerHTML = "";
+                    // 循环渲染图片和下载按钮
+                    data.output_images.forEach((imgUrl, idx) => {
+                        // 图片
+                        const img = document.createElement("img");
+                        img.src = imgUrl;
+                        img.className = "result-img";
+                        img.alt = `生成结果${idx+1}（Seed：${data.seed === -1 ? "随机" : data.seed}）`;
+                        imgContainer.appendChild(img);
+
+                        // 下载按钮（单图+批量下载）
+                        const downloadBtn = document.createElement("button");
+                        downloadBtn.className = "btn btn-download";
+                        downloadBtn.textContent = `下载图片${idx+1}`;
+                        downloadBtn.onclick = () => {
+                            const a = document.createElement("a");
+                            a.href = imgUrl;
+                            a.download = imgUrl.split("/").pop();
+                            a.click();
+                        };
+                        downloadContainer.appendChild(downloadBtn);
+                    });
+                    // 批量下载按钮（多图时显示）
+                    if (data.output_images.length > 1) {
+                        const batchBtn = document.createElement("button");
+                        batchBtn.className = "btn btn-download";
+                        batchBtn.textContent = "批量下载所有图片";
+                        batchBtn.onclick = () => {
+                            data.output_images.forEach((imgUrl, idx) => {
+                                const a = document.createElement("a");
+                                a.href = imgUrl;
+                                a.download = imgUrl.split("/").pop();
+                                // 延迟触发，避免浏览器拦截
+                                setTimeout(() => a.click(), idx * 300);
+                            });
+                        };
+                        downloadContainer.appendChild(batchBtn);
+                    }
+
+                    // 显示结果区的参数
+                    document.getElementById("showPrompt").textContent = data.user_prompt.length > 50 ? data.user_prompt.slice(0,50)+"..." : data.user_prompt;
+                    document.getElementById("showSeed").textContent = data.seed === -1 ? "随机" : data.seed;
+                    document.getElementById("showCfg").textContent = data.cfg_scale;
+                    document.getElementById("showSampler").textContent = data.sampler;
+                    resultBox.style.display = "block";
+                } else if (data.task_status === "FAILED") {
+                    clearInterval(checkInterval);
+                    statusBox.textContent = `失败：${data.error_msg}`;
+                    statusBox.className = "status-box status-fail";
+                    document.getElementById("startBtn").disabled = false;
+                } else {
+                    const seedDesc = seed === -1 ? "随机" : seed;
+                    statusBox.textContent = `生成中（状态：${data.task_status} | Seed：${seedDesc} | 生成数量：${data.num_images || 1}）...`;
+                }
+            } catch (e) {
+                clearInterval(checkInterval);
+                statusBox.textContent = `查询失败：${e.message}`;
+                statusBox.className = "status-box status-fail";
+                document.getElementById("startBtn").disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
         <div class="param-group">
             <label class="param-label">生成提示词（Prompt，必填！）</label>
             <textarea class="param-input" id="prompt" placeholder="例如：古风汉服女孩，庭院樱花，8k细节">一只金色的猫，软光，8k毛发细节，亚洲审美风格</textarea>
