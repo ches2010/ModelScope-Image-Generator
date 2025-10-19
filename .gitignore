@@ -1,0 +1,25 @@
+# Python冗余文件
+__pycache__/
+venv/
+*.pyc
+*.pyo
+*.pyd
+
+# 敏感配置（API Key在此文件，不上传GitHub）
+app/config.py
+
+# 生成的图片（不上传，避免仓库变大）
+app/generated_images/
+*.jpg
+*.png
+
+# 日志文件
+run.log
+nohup.out
+
+# 前端冗余文件
+frontend/*.log
+
+# 系统文件
+.DS_Store
+Thumbs.db
