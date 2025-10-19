@@ -5,7 +5,7 @@ MODEL_SCOPE_API_KEY = "your_modelscope_api_key_here"
 IMAGE_SAVE_PATH = "./app/generated_images/"
 MODEL_SCOPE_BASE_URL = "https://api-inference.modelscope.cn/"
 FLASK_HOST = "0.0.0.0"
-FLASK_PORT = 5000
+FLASK_PORT = 9698
 # 默认生图参数（新增：Euler/ResMultistep采样器、Simple/SGMUniform调度器）
 DEFAULT_IMAGE_PARAMS = {
     "model": "Qwen/Qwen-Image",
